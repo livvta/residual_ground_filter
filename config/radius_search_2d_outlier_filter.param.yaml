@@ -1,28 +1,30 @@
 /**:
   ros__parameters:
 
-    search_radius: 0.7          # 二维 XY 平面内的搜索半径，单位为米。
-    min_neighbors: 20           # 半径内至少需要的点数（包含自身）
+    search_radius: 0.5          # 二维 XY 平面内的搜索半径，单位为米。
+    min_neighbors: 22           # 半径内至少需要的点数（包含自身）
     remove_zero_points: true    # 忽略全零占位点
+
+    input_frame: ""             # 留空表示在输入点云坐标系中处理
+    output_frame: ""            # 留空表示在输入点云坐标系中处理
+
+    transform_timeout_sec: 0.1  # TF 查询超时
+    max_queue_size: 1           # 输入/输出队列深度
+
+    deletion_z:
+      enabled: true             # 只查询位于地面高度带的点
+      min: -3.0
+      max: 1.0
 
     vertical_rescue:
       enabled: true                # 二次检查邻居 Z 分布
-
       # 条件1：邻居点高度跨度至少达到该值
       min_z_span: 0.25             # 最小高度跨度
-
       # 条件2：是否有足够多的分离点
       separation_threshold: 0.10   # 与查询点高度差达到该值即计为分离点
       min_separated_points: 4      # 最少需要的分离点数
-
       # 条件3：是否覆盖了多个高度区间
       z_window: 2.00               # 对当前点上下范围内进行 Z 分箱
       bin_size: 0.10               # Z 分布统计的分箱高度
       min_occupied_bins: 3         # 至少覆盖的高度层数
 
-    # 留空表示在输入点云坐标系中处理，并保持原 frame_id。
-    input_frame: ""
-    output_frame: ""
-
-    transform_timeout_sec: 0.1   # TF 查询超时
-    max_queue_size: 1    # 输入/输出队列深度

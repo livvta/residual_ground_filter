@@ -26,6 +26,18 @@ RadiusSearch2DOutlierFilterComponent::RadiusSearch2DOutlierFilterComponent(
   if (!std::isfinite(search_radius_) || search_radius_ <= 0.0) {
     throw std::invalid_argument("search_radius must be finite and greater than 0");
   }
+  deletion_z_.enabled = declare_parameter<bool>("deletion_z.enabled", deletion_z_.enabled);
+  deletion_z_.min_z = static_cast<float>(
+    declare_parameter<double>("deletion_z.min", deletion_z_.min_z));
+  deletion_z_.max_z = static_cast<float>(
+    declare_parameter<double>("deletion_z.max", deletion_z_.max_z));
+  if (
+    !std::isfinite(deletion_z_.min_z) || !std::isfinite(deletion_z_.max_z) ||
+    deletion_z_.min_z >= deletion_z_.max_z)
+  {
+    throw std::invalid_argument(
+            "deletion_z bounds must be finite and deletion_z.min must be below deletion_z.max");
+  }
   vertical_rescue_.enabled =
     declare_parameter<bool>("vertical_rescue.enabled", vertical_rescue_.enabled);
   vertical_rescue_.min_z_span = static_cast<float>(
@@ -50,8 +62,9 @@ RadiusSearch2DOutlierFilterComponent::RadiusSearch2DOutlierFilterComponent(
   RCLCPP_INFO(
     get_logger(),
     "2D radius filter: radius=%.3f m min_neighbors=%d remove_zero_points=%s "
-    "vertical_rescue=%s",
+    "deletion_z=%s[%.2f, %.2f] vertical_rescue=%s",
     search_radius_, min_neighbors_, remove_zero_points_ ? "true" : "false",
+    deletion_z_.enabled ? "" : "disabled ", deletion_z_.min_z, deletion_z_.max_z,
     vertical_rescue_.enabled ? "true" : "false");
 }
 
@@ -63,6 +76,7 @@ RadiusSearch2DOutlierFilterComponent::onParameterChange(
   auto next_min_neighbors = min_neighbors_;
   auto next_search_radius = search_radius_;
   auto next_remove_zero_points = remove_zero_points_;
+  auto next_deletion_z = deletion_z_;
   auto next_vertical_rescue = vertical_rescue_;
 
   for (const auto & parameter : parameters) {
@@ -73,6 +87,12 @@ RadiusSearch2DOutlierFilterComponent::onParameterChange(
         next_search_radius = parameter.as_double();
       } else if (parameter.get_name() == "remove_zero_points") {
         next_remove_zero_points = parameter.as_bool();
+      } else if (parameter.get_name() == "deletion_z.enabled") {
+        next_deletion_z.enabled = parameter.as_bool();
+      } else if (parameter.get_name() == "deletion_z.min") {
+        next_deletion_z.min_z = static_cast<float>(parameter.as_double());
+      } else if (parameter.get_name() == "deletion_z.max") {
+        next_deletion_z.max_z = static_cast<float>(parameter.as_double());
       } else if (parameter.get_name() == "vertical_rescue.enabled") {
         next_vertical_rescue.enabled = parameter.as_bool();
       } else if (parameter.get_name() == "vertical_rescue.min_z_span") {
@@ -113,6 +133,15 @@ RadiusSearch2DOutlierFilterComponent::onParameterChange(
       .set__successful(false)
       .set__reason("search_radius must be finite and greater than 0");
   }
+  if (
+    !std::isfinite(next_deletion_z.min_z) || !std::isfinite(next_deletion_z.max_z) ||
+    next_deletion_z.min_z >= next_deletion_z.max_z)
+  {
+    return rcl_interfaces::msg::SetParametersResult()
+      .set__successful(false)
+      .set__reason(
+      "deletion_z bounds must be finite and deletion_z.min must be below deletion_z.max");
+  }
   try {
     ValidateAndFinalizeVerticalRescueParameters(next_vertical_rescue, next_min_neighbors);
   } catch (const std::invalid_argument & error) {
@@ -124,11 +153,14 @@ RadiusSearch2DOutlierFilterComponent::onParameterChange(
   min_neighbors_ = next_min_neighbors;
   search_radius_ = next_search_radius;
   remove_zero_points_ = next_remove_zero_points;
+  deletion_z_ = next_deletion_z;
   vertical_rescue_ = next_vertical_rescue;
   RCLCPP_INFO(
     get_logger(),
-    "Updated: radius=%.3f m min_neighbors=%d remove_zero_points=%s vertical_rescue=%s",
+    "Updated: radius=%.3f m min_neighbors=%d remove_zero_points=%s "
+    "deletion_z=%s[%.2f, %.2f] vertical_rescue=%s",
     search_radius_, min_neighbors_, remove_zero_points_ ? "true" : "false",
+    deletion_z_.enabled ? "" : "disabled ", deletion_z_.min_z, deletion_z_.max_z,
     vertical_rescue_.enabled ? "true" : "false");
   return rcl_interfaces::msg::SetParametersResult().set__successful(true);
 }
@@ -176,6 +208,16 @@ void RadiusSearch2DOutlierFilterComponent::filter(
     kd_tree_->setInputCloud(xy_cloud);
 
     for (std::size_t i = 0; i < xy_cloud->size(); ++i) {
+      const float query_z = z_values[i];
+      if (
+        deletion_z_.enabled &&
+        (query_z < deletion_z_.min_z || query_z > deletion_z_.max_z))
+      {
+        // Protect points outside the ground-height band and avoid their neighbor search.
+        filtered_cloud.push_back(xyz_cloud->points[source_indices[i]]);
+        continue;
+      }
+
       const int count = kd_tree_->radiusSearch(
         static_cast<int>(i), search_radius_, neighbor_indices, neighbor_squared_distances,
         max_neighbors);

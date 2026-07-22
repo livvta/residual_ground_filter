@@ -16,6 +16,13 @@
 namespace radius_search_2d_outlier_filter
 {
 
+struct DeletionZRange
+{
+  bool enabled{true};
+  float min_z{-2.50F};
+  float max_z{-1.60F};
+};
+
 class RadiusSearch2DOutlierFilterComponent : public Filter
 {
 public:
@@ -32,6 +39,7 @@ private:
   int min_neighbors_;
   double search_radius_;
   bool remove_zero_points_;
+  DeletionZRange deletion_z_;
   VerticalRescueParameters vertical_rescue_;
   pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
