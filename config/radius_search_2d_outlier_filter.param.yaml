@@ -1,0 +1,19 @@
+/**:
+  ros__parameters:
+    # 二维 XY 平面内的搜索半径，单位为米。
+    search_radius: 0.7
+
+    # 半径内至少需要的点数；与 Autoware/PCL 一致，计数包含查询点自身。
+    min_neighbors: 15
+
+    # 当前雷达链路可能含有 (0, 0, 0) 占位点，建议开启。
+    # 这是针对本项目的兼容扩展；Autoware 原节点没有此参数。
+    remove_zero_points: true
+
+    # 留空表示在输入点云坐标系中处理，并保持原 frame_id。
+    input_frame: ""
+    output_frame: ""
+
+    # TF 查询超时和 PointCloud2 输入/输出队列深度。
+    transform_timeout_sec: 0.1
+    max_queue_size: 1
