@@ -1,10 +1,8 @@
 # Radius Search 2D Outlier Filter
 
-程序将输入转换为`pcl::PointCloud<pcl::PointXYZ>`，把 Z 置零建立二维 PCL KD-tree，然后保留搜索半径内
-邻居数不少于阈值的原始 XYZ 点。
+程序将输入转换为`pcl::PointCloud<pcl::PointXYZ>`，把 Z 置零建立二维 PCL KD-tree。
 
-适合接在地面分割之后，用于清除雨点、飞虫和稀疏孤立噪点。不要直接用于包含完整地面的
-原始点云，否则密集地面会改变邻域统计。
+用于在地面分割算法之后，再次去除没有被分割正确的地面点。此程序不会误伤稀疏的立体结构，例如墙边、立柱和其他竖直障碍。
 
 ## 与 Autoware 的关系
 
@@ -57,13 +55,24 @@ ros2 run radius_search_2d_outlier_filter radius_search_2d_outlier_filter_node \
 | `search_radius` | `0.2` | XY 平面搜索半径（m） |
 | `min_neighbors` | `5` | 半径内最少点数，包含点自身 |
 | `remove_zero_points` | `true`（配置文件） | 删除 `(0,0,0)` 占位点 |
+| `vertical_rescue.enabled` | `true` | 对原本将删除的稀疏点启用 Z 分布判定 |
+| `vertical_rescue.min_z_span` | `0.25` | 邻域最小 Z 跨度（m） |
+| `vertical_rescue.separation_threshold` | `0.10` | 与查询点明显分离的高度差（m） |
+| `vertical_rescue.min_separated_points` | `3` | 最少高度分离邻居数 |
+| `vertical_rescue.bin_size` | `0.10` | Z 分箱尺寸（m） |
+| `vertical_rescue.z_window` | `0.80` | 查询点上下统计范围（m） |
+| `vertical_rescue.min_occupied_bins` | `3` | 最少占用高度层数 |
 | `input_frame` | 空 | 非空时先变换到该坐标系处理 |
 | `output_frame` | 空 | 非空时将结果变换到该坐标系；空则恢复输入 frame |
 | `transform_timeout_sec` | `0.1` | TF 查询超时（s） |
 | `max_queue_size` | `5` | SensorData QoS 队列深度 |
 
-`search_radius`、`min_neighbors` 和 `remove_zero_points` 可通过
-`ros2 param set` 或 rqt 动态修改。其余参数需要重启节点。
+`search_radius`、`min_neighbors`、`remove_zero_points` 和全部 `vertical_rescue.*` 参数
+可通过 `ros2 param set` 或 rqt 动态修改。TF 与队列参数需要重启节点。
+
+竖直救回只在 `radiusSearch` 返回数量小于 `min_neighbors` 时运行，并复用本次邻域搜索
+结果，不会执行第二次 KD-tree 查询。Z 数组与过滤后的二维点云索引严格对齐，判定函数
+不进行逐点动态内存分配。
 
 实现会将 PCL `radiusSearch` 的最大返回数量限制为 `min_neighbors`。过滤判据只关心
 邻居数量是否达到阈值，因此该提前停止优化不会改变分类结果，并可显著减少密集区域中的
@@ -74,4 +83,3 @@ ros2 run radius_search_2d_outlier_filter radius_search_2d_outlier_filter_node \
 - 噪点仍太多：增大 `search_radius` 或 `min_neighbors`。
 - 细杆、远处目标被删：减小 `min_neighbors`，其次适当增大 `search_radius`。
 - 点密度随距离下降明显时，固定半径算法通常需要在“近处去噪”和“远处保留”之间折中。
-

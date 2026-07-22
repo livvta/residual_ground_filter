@@ -26,6 +26,21 @@ RadiusSearch2DOutlierFilterComponent::RadiusSearch2DOutlierFilterComponent(
   if (!std::isfinite(search_radius_) || search_radius_ <= 0.0) {
     throw std::invalid_argument("search_radius must be finite and greater than 0");
   }
+  vertical_rescue_.enabled =
+    declare_parameter<bool>("vertical_rescue.enabled", vertical_rescue_.enabled);
+  vertical_rescue_.min_z_span = static_cast<float>(
+    declare_parameter<double>("vertical_rescue.min_z_span", vertical_rescue_.min_z_span));
+  vertical_rescue_.separation_threshold = static_cast<float>(declare_parameter<double>(
+      "vertical_rescue.separation_threshold", vertical_rescue_.separation_threshold));
+  vertical_rescue_.min_separated_points = static_cast<int>(declare_parameter<int64_t>(
+      "vertical_rescue.min_separated_points", vertical_rescue_.min_separated_points));
+  vertical_rescue_.bin_size = static_cast<float>(
+    declare_parameter<double>("vertical_rescue.bin_size", vertical_rescue_.bin_size));
+  vertical_rescue_.z_window = static_cast<float>(
+    declare_parameter<double>("vertical_rescue.z_window", vertical_rescue_.z_window));
+  vertical_rescue_.min_occupied_bins = static_cast<int>(declare_parameter<int64_t>(
+      "vertical_rescue.min_occupied_bins", vertical_rescue_.min_occupied_bins));
+  ValidateAndFinalizeVerticalRescueParameters(vertical_rescue_, min_neighbors_);
 
   parameter_callback_handle_ = add_on_set_parameters_callback(
     std::bind(
@@ -33,8 +48,11 @@ RadiusSearch2DOutlierFilterComponent::RadiusSearch2DOutlierFilterComponent(
       std::placeholders::_1));
 
   RCLCPP_INFO(
-    get_logger(), "2D radius filter: radius=%.3f m min_neighbors=%d remove_zero_points=%s",
-    search_radius_, min_neighbors_, remove_zero_points_ ? "true" : "false");
+    get_logger(),
+    "2D radius filter: radius=%.3f m min_neighbors=%d remove_zero_points=%s "
+    "vertical_rescue=%s",
+    search_radius_, min_neighbors_, remove_zero_points_ ? "true" : "false",
+    vertical_rescue_.enabled ? "true" : "false");
 }
 
 rcl_interfaces::msg::SetParametersResult
@@ -45,6 +63,7 @@ RadiusSearch2DOutlierFilterComponent::onParameterChange(
   auto next_min_neighbors = min_neighbors_;
   auto next_search_radius = search_radius_;
   auto next_remove_zero_points = remove_zero_points_;
+  auto next_vertical_rescue = vertical_rescue_;
 
   for (const auto & parameter : parameters) {
     try {
@@ -54,6 +73,20 @@ RadiusSearch2DOutlierFilterComponent::onParameterChange(
         next_search_radius = parameter.as_double();
       } else if (parameter.get_name() == "remove_zero_points") {
         next_remove_zero_points = parameter.as_bool();
+      } else if (parameter.get_name() == "vertical_rescue.enabled") {
+        next_vertical_rescue.enabled = parameter.as_bool();
+      } else if (parameter.get_name() == "vertical_rescue.min_z_span") {
+        next_vertical_rescue.min_z_span = static_cast<float>(parameter.as_double());
+      } else if (parameter.get_name() == "vertical_rescue.separation_threshold") {
+        next_vertical_rescue.separation_threshold = static_cast<float>(parameter.as_double());
+      } else if (parameter.get_name() == "vertical_rescue.min_separated_points") {
+        next_vertical_rescue.min_separated_points = static_cast<int>(parameter.as_int());
+      } else if (parameter.get_name() == "vertical_rescue.bin_size") {
+        next_vertical_rescue.bin_size = static_cast<float>(parameter.as_double());
+      } else if (parameter.get_name() == "vertical_rescue.z_window") {
+        next_vertical_rescue.z_window = static_cast<float>(parameter.as_double());
+      } else if (parameter.get_name() == "vertical_rescue.min_occupied_bins") {
+        next_vertical_rescue.min_occupied_bins = static_cast<int>(parameter.as_int());
       } else if (
         parameter.get_name() == "input_frame" || parameter.get_name() == "output_frame" ||
         parameter.get_name() == "transform_timeout_sec" ||
@@ -80,13 +113,23 @@ RadiusSearch2DOutlierFilterComponent::onParameterChange(
       .set__successful(false)
       .set__reason("search_radius must be finite and greater than 0");
   }
+  try {
+    ValidateAndFinalizeVerticalRescueParameters(next_vertical_rescue, next_min_neighbors);
+  } catch (const std::invalid_argument & error) {
+    return rcl_interfaces::msg::SetParametersResult()
+      .set__successful(false)
+      .set__reason(error.what());
+  }
 
   min_neighbors_ = next_min_neighbors;
   search_radius_ = next_search_radius;
   remove_zero_points_ = next_remove_zero_points;
+  vertical_rescue_ = next_vertical_rescue;
   RCLCPP_INFO(
-    get_logger(), "Updated: radius=%.3f m min_neighbors=%d remove_zero_points=%s",
-    search_radius_, min_neighbors_, remove_zero_points_ ? "true" : "false");
+    get_logger(),
+    "Updated: radius=%.3f m min_neighbors=%d remove_zero_points=%s vertical_rescue=%s",
+    search_radius_, min_neighbors_, remove_zero_points_ ? "true" : "false",
+    vertical_rescue_.enabled ? "true" : "false");
   return rcl_interfaces::msg::SetParametersResult().set__successful(true);
 }
 
@@ -102,6 +145,8 @@ void RadiusSearch2DOutlierFilterComponent::filter(
   xy_cloud->reserve(xyz_cloud->size());
   std::vector<std::size_t> source_indices;
   source_indices.reserve(xyz_cloud->size());
+  std::vector<float> z_values;
+  z_values.reserve(xyz_cloud->size());
 
   constexpr float zero_epsilon = 1.0e-6F;
   for (std::size_t i = 0; i < xyz_cloud->size(); ++i) {
@@ -117,6 +162,7 @@ void RadiusSearch2DOutlierFilterComponent::filter(
     }
     xy_cloud->push_back(pcl::PointXYZ{point.x, point.y, 0.0F});
     source_indices.push_back(i);
+    z_values.push_back(point.z);
   }
 
   pcl::PointCloud<pcl::PointXYZ> filtered_cloud;
@@ -133,7 +179,11 @@ void RadiusSearch2DOutlierFilterComponent::filter(
       const int count = kd_tree_->radiusSearch(
         static_cast<int>(i), search_radius_, neighbor_indices, neighbor_squared_distances,
         max_neighbors);
-      if (count >= min_neighbors_) {
+      if (
+        count >= min_neighbors_ ||
+        HasVerticalZDistribution(
+          i, count, neighbor_indices, z_values, vertical_rescue_))
+      {
         filtered_cloud.push_back(xyz_cloud->points[source_indices[i]]);
       }
     }

@@ -17,7 +17,8 @@ find_package(tf2_sensor_msgs REQUIRED)
 
 add_library(radius_search_2d_outlier_filter_component SHARED
   src/filter.cpp
-  src/radius_search_2d_outlier_filter_node.cpp)
+  src/radius_search_2d_outlier_filter_node.cpp
+  src/vertical_distribution.cpp)
 
 target_compile_options(radius_search_2d_outlier_filter_component PRIVATE
   -Wall -Wextra -Wpedantic)
@@ -58,4 +59,14 @@ install(FILES LICENSE README.md DESTINATION share/${PROJECT_NAME})
 ament_export_include_directories(include)
 ament_export_dependencies(
   pcl_conversions rclcpp rclcpp_components sensor_msgs tf2 tf2_ros tf2_sensor_msgs)
+
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_vertical_distribution
+    tests/test_vertical_distribution.cpp
+    src/vertical_distribution.cpp)
+  target_include_directories(test_vertical_distribution PRIVATE include)
+  target_compile_options(test_vertical_distribution PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
 ament_package()

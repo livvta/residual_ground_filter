@@ -2,6 +2,7 @@
 #define RADIUS_SEARCH_2D_OUTLIER_FILTER__RADIUS_SEARCH_2D_OUTLIER_FILTER_NODE_HPP_
 
 #include "radius_search_2d_outlier_filter/filter.hpp"
+#include "radius_search_2d_outlier_filter/vertical_distribution.hpp"
 
 #include <memory>
 #include <mutex>
@@ -31,6 +32,7 @@ private:
   int min_neighbors_;
   double search_radius_;
   bool remove_zero_points_;
+  VerticalRescueParameters vertical_rescue_;
   pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
 };
