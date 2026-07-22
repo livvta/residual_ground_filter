@@ -2,6 +2,7 @@
 #define RADIUS_SEARCH_2D_OUTLIER_FILTER__RADIUS_SEARCH_2D_OUTLIER_FILTER_NODE_HPP_
 
 #include "radius_search_2d_outlier_filter/filter.hpp"
+#include "radius_search_2d_outlier_filter/uniform_grid_2d.hpp"
 #include "radius_search_2d_outlier_filter/vertical_distribution.hpp"
 
 #include <memory>
@@ -10,7 +11,6 @@
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <pcl/search/kdtree.h>
 #include <rcl_interfaces/msg/set_parameters_result.hpp>
 
 namespace radius_search_2d_outlier_filter
@@ -41,7 +41,7 @@ private:
   bool remove_zero_points_;
   DeletionZRange deletion_z_;
   VerticalRescueParameters vertical_rescue_;
-  pcl::search::KdTree<pcl::PointXYZ>::Ptr kd_tree_;
+  UniformGrid2D grid_;
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameter_callback_handle_;
 };
 

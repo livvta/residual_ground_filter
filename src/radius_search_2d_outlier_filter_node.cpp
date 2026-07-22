@@ -17,8 +17,7 @@ RadiusSearch2DOutlierFilterComponent::RadiusSearch2DOutlierFilterComponent(
 : Filter("radius_search_2d_outlier_filter", options),
   min_neighbors_(declare_parameter<int>("min_neighbors", 5)),
   search_radius_(declare_parameter<double>("search_radius", 0.2)),
-  remove_zero_points_(declare_parameter<bool>("remove_zero_points", false)),
-  kd_tree_(pcl::make_shared<pcl::search::KdTree<pcl::PointXYZ>>(false))
+  remove_zero_points_(declare_parameter<bool>("remove_zero_points", false))
 {
   if (min_neighbors_ < 1) {
     throw std::invalid_argument("min_neighbors must be at least 1");
@@ -203,9 +202,9 @@ void RadiusSearch2DOutlierFilterComponent::filter(
     // The classification only needs to know whether the threshold is reached. Bounding the
     // result count avoids enumerating every neighbor in dense regions without changing output.
     const auto max_neighbors = static_cast<unsigned int>(min_neighbors_);
-    std::vector<int> neighbor_indices(max_neighbors);
-    std::vector<float> neighbor_squared_distances(max_neighbors);
-    kd_tree_->setInputCloud(xy_cloud);
+    std::vector<int> neighbor_indices;
+    neighbor_indices.reserve(max_neighbors);
+    grid_.Build(xy_cloud, search_radius_);
 
     for (std::size_t i = 0; i < xy_cloud->size(); ++i) {
       const float query_z = z_values[i];
@@ -218,9 +217,7 @@ void RadiusSearch2DOutlierFilterComponent::filter(
         continue;
       }
 
-      const int count = kd_tree_->radiusSearch(
-        static_cast<int>(i), search_radius_, neighbor_indices, neighbor_squared_distances,
-        max_neighbors);
+      const int count = grid_.RadiusSearch(i, neighbor_indices, max_neighbors);
       if (
         count >= min_neighbors_ ||
         HasVerticalZDistribution(

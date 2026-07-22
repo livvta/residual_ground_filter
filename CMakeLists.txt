@@ -6,7 +6,7 @@ if(NOT CMAKE_CXX_STANDARD)
 endif()
 
 find_package(ament_cmake REQUIRED)
-find_package(PCL REQUIRED COMPONENTS common kdtree search)
+find_package(PCL REQUIRED COMPONENTS common)
 find_package(pcl_conversions REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
@@ -18,6 +18,7 @@ find_package(tf2_sensor_msgs REQUIRED)
 add_library(radius_search_2d_outlier_filter_component SHARED
   src/filter.cpp
   src/radius_search_2d_outlier_filter_node.cpp
+  src/uniform_grid_2d.cpp
   src/vertical_distribution.cpp)
 
 target_compile_options(radius_search_2d_outlier_filter_component PRIVATE
@@ -67,6 +68,15 @@ if(BUILD_TESTING)
     src/vertical_distribution.cpp)
   target_include_directories(test_vertical_distribution PRIVATE include)
   target_compile_options(test_vertical_distribution PRIVATE -Wall -Wextra -Wpedantic)
+
+  ament_add_gtest(test_uniform_grid_2d
+    tests/test_uniform_grid_2d.cpp
+    src/uniform_grid_2d.cpp)
+  target_include_directories(test_uniform_grid_2d
+    PRIVATE include
+    SYSTEM PRIVATE ${PCL_INCLUDE_DIRS})
+  target_link_libraries(test_uniform_grid_2d ${PCL_LIBRARIES})
+  target_compile_options(test_uniform_grid_2d PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 ament_package()

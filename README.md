@@ -1,6 +1,7 @@
 # Radius Search 2D Outlier Filter
 
-程序将输入转换为`pcl::PointCloud<pcl::PointXYZ>`，把 Z 置零建立二维 PCL KD-tree。
+程序将输入转换为 `pcl::PointCloud<pcl::PointXYZ>`，把 Z 置零建立二维均匀网格。
+网格边长等于 `search_radius`；每次只检查当前格及周围 8 格，再执行精确圆形距离判断。
 
 用于在地面分割算法之后，再次去除没有被正确分割的地面点。地面高度带外的点无条件
 保留；带内二维稀疏点只有在邻居不呈明显竖直分布时才会删除，从而保护墙边、立柱和
@@ -26,10 +27,10 @@
   │  └─ 有效点 → 保留到待处理集合
   │
   ├─ 将所有有效点投影到 XY 平面
-  │  ├─ KD-tree 中 Z 统一设为 0
+  │  ├─ 投影点的 Z 统一设为 0
   │  └─ 原始 Z 单独保存在对齐数组中
   │
-  ├─ 建立二维 PCL KD-tree
+  ├─ 建立二维连续均匀网格
   │
   └─ 对每个有效点执行判断
      │
@@ -38,7 +39,7 @@
      │  │  当前范围：[-2.50, -1.60] m
      │  │
      │  ├─ 否 → 无条件保留
-     │  │        └─ 不执行 radiusSearch
+     │  │        └─ 不执行二维邻域搜索
      │  │
      │  └─ 是 → 执行二维半径搜索
      │           │
@@ -86,12 +87,13 @@
 
 ## 与 Autoware 的关系
 
-- 保留 PCL KD-tree、二维半径搜索、参数名称和 `input`/`output` 话题接口。
+- 保留二维精确圆形半径判据、参数名称和 `input`/`output` 话题接口；邻域索引改为连续均匀
+  网格，不再使用 PCL KD-tree。
 - 保留 SensorData QoS、运行时参数更新、可组合组件、独立可执行程序和可选 TF 变换。
 - 没有引入 Autoware 整包中的诊断、调试发布器、managed transform buffer 和 indices
   同步，因为这些会带入大量与本过滤器无关的 Autoware 依赖。
 - `remove_zero_points` 是本项目扩展。配置中默认开启，以清除雷达驱动或上游处理中产生的
-  `(0,0,0)` 占位点；设为 `false` 时，核心点选择过程与 Autoware 实现一致。
+  `(0,0,0)` 占位点；设为 `false` 时，核心点选择判据与原实现一致。
 
 ## 编译
 
@@ -154,16 +156,16 @@ ros2 run radius_search_2d_outlier_filter radius_search_2d_outlier_filter_node \
 `vertical_rescue.*` 参数可通过 `ros2 param set` 或 rqt 动态修改。TF 与队列参数需要
 重启节点。
 
-`deletion_z` 判断发生在 `radiusSearch` 之前。高度带外的点直接复制到输出，不执行邻域
+`deletion_z` 判断发生在二维邻域搜索之前。高度带外的点直接复制到输出，不执行邻域
 搜索；高度边界使用过滤器处理坐标系，当前 `/patchworkpp/nonground` 为 `base_link`。
 
-竖直救回只在 `radiusSearch` 返回数量小于 `min_neighbors` 时运行，并复用本次邻域搜索
-结果，不会执行第二次 KD-tree 查询。Z 数组与过滤后的二维点云索引严格对齐，判定函数
+竖直救回只在邻域点数量小于 `min_neighbors` 时运行，并复用本次邻域搜索
+结果，不会执行第二次邻域查询。Z 数组与过滤后的二维点云索引严格对齐，判定函数
 不进行逐点动态内存分配。
 
-实现会将 PCL `radiusSearch` 的最大返回数量限制为 `min_neighbors`。过滤判据只关心
-邻居数量是否达到阈值，因此该提前停止优化不会改变分类结果，并可显著减少密集区域中的
-邻居枚举和临时内存使用。
+均匀网格使用连续桶存储点索引，并将最大返回数量限制为 `min_neighbors`。过滤判据只关心
+邻居数量是否达到阈值，因此找到足够邻居后会立即停止；邻居不足时仍返回精确圆内的全部
+邻居供 Z 分布判断使用，不改变原有分类判据。
 
 ## 调参方向
 
