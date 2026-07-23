@@ -11,19 +11,33 @@
 
 namespace radius_search_2d_outlier_filter
 {
+namespace
+{
+
+std::string DescribePreFilterMaxZ(const double max_z)
+{
+  return max_z == kUnlimitedPreFilterMaxZ ? "unlimited" : std::to_string(max_z) + " m";
+}
+
+}  // namespace
 
 RadiusSearch2DOutlierFilterComponent::RadiusSearch2DOutlierFilterComponent(
   const rclcpp::NodeOptions & options)
 : Filter("radius_search_2d_outlier_filter", options),
   min_neighbors_(declare_parameter<int>("min_neighbors", 5)),
   search_radius_(declare_parameter<double>("search_radius", 0.2)),
-  remove_zero_points_(declare_parameter<bool>("remove_zero_points", false))
+  remove_zero_points_(declare_parameter<bool>("remove_zero_points", false)),
+  pre_filter_max_z_(
+    declare_parameter<double>("pre_filter.max_z", kUnlimitedPreFilterMaxZ))
 {
   if (min_neighbors_ < 1) {
     throw std::invalid_argument("min_neighbors must be at least 1");
   }
   if (!std::isfinite(search_radius_) || search_radius_ <= 0.0) {
     throw std::invalid_argument("search_radius must be finite and greater than 0");
+  }
+  if (!std::isfinite(pre_filter_max_z_)) {
+    throw std::invalid_argument("pre_filter.max_z must be finite");
   }
   deletion_z_.enabled = declare_parameter<bool>("deletion_z.enabled", deletion_z_.enabled);
   deletion_z_.min_z = static_cast<float>(
@@ -61,8 +75,9 @@ RadiusSearch2DOutlierFilterComponent::RadiusSearch2DOutlierFilterComponent(
   RCLCPP_INFO(
     get_logger(),
     "2D radius filter: radius=%.3f m min_neighbors=%d remove_zero_points=%s "
-    "deletion_z=%s[%.2f, %.2f] vertical_rescue=%s",
+    "pre_filter.max_z=%s deletion_z=%s[%.2f, %.2f] vertical_rescue=%s",
     search_radius_, min_neighbors_, remove_zero_points_ ? "true" : "false",
+    DescribePreFilterMaxZ(pre_filter_max_z_).c_str(),
     deletion_z_.enabled ? "" : "disabled ", deletion_z_.min_z, deletion_z_.max_z,
     vertical_rescue_.enabled ? "true" : "false");
 }
@@ -75,6 +90,7 @@ RadiusSearch2DOutlierFilterComponent::onParameterChange(
   auto next_min_neighbors = min_neighbors_;
   auto next_search_radius = search_radius_;
   auto next_remove_zero_points = remove_zero_points_;
+  auto next_pre_filter_max_z = pre_filter_max_z_;
   auto next_deletion_z = deletion_z_;
   auto next_vertical_rescue = vertical_rescue_;
 
@@ -86,6 +102,8 @@ RadiusSearch2DOutlierFilterComponent::onParameterChange(
         next_search_radius = parameter.as_double();
       } else if (parameter.get_name() == "remove_zero_points") {
         next_remove_zero_points = parameter.as_bool();
+      } else if (parameter.get_name() == "pre_filter.max_z") {
+        next_pre_filter_max_z = parameter.as_double();
       } else if (parameter.get_name() == "deletion_z.enabled") {
         next_deletion_z.enabled = parameter.as_bool();
       } else if (parameter.get_name() == "deletion_z.min") {
@@ -132,6 +150,11 @@ RadiusSearch2DOutlierFilterComponent::onParameterChange(
       .set__successful(false)
       .set__reason("search_radius must be finite and greater than 0");
   }
+  if (!std::isfinite(next_pre_filter_max_z)) {
+    return rcl_interfaces::msg::SetParametersResult()
+      .set__successful(false)
+      .set__reason("pre_filter.max_z must be finite");
+  }
   if (
     !std::isfinite(next_deletion_z.min_z) || !std::isfinite(next_deletion_z.max_z) ||
     next_deletion_z.min_z >= next_deletion_z.max_z)
@@ -152,13 +175,15 @@ RadiusSearch2DOutlierFilterComponent::onParameterChange(
   min_neighbors_ = next_min_neighbors;
   search_radius_ = next_search_radius;
   remove_zero_points_ = next_remove_zero_points;
+  pre_filter_max_z_ = next_pre_filter_max_z;
   deletion_z_ = next_deletion_z;
   vertical_rescue_ = next_vertical_rescue;
   RCLCPP_INFO(
     get_logger(),
     "Updated: radius=%.3f m min_neighbors=%d remove_zero_points=%s "
-    "deletion_z=%s[%.2f, %.2f] vertical_rescue=%s",
+    "pre_filter.max_z=%s deletion_z=%s[%.2f, %.2f] vertical_rescue=%s",
     search_radius_, min_neighbors_, remove_zero_points_ ? "true" : "false",
+    DescribePreFilterMaxZ(pre_filter_max_z_).c_str(),
     deletion_z_.enabled ? "" : "disabled ", deletion_z_.min_z, deletion_z_.max_z,
     vertical_rescue_.enabled ? "true" : "false");
   return rcl_interfaces::msg::SetParametersResult().set__successful(true);
@@ -178,17 +203,16 @@ void RadiusSearch2DOutlierFilterComponent::filter(
   source_indices.reserve(xyz_cloud->size());
   std::vector<float> z_values;
   z_values.reserve(xyz_cloud->size());
+  std::vector<bool> keep_points(xyz_cloud->size(), false);
 
-  constexpr float zero_epsilon = 1.0e-6F;
   for (std::size_t i = 0; i < xyz_cloud->size(); ++i) {
     const auto & point = xyz_cloud->points[i];
-    if (!std::isfinite(point.x) || !std::isfinite(point.y) || !std::isfinite(point.z)) {
+    if (!IsValidInputPoint(point, remove_zero_points_)) {
       continue;
     }
-    if (
-      remove_zero_points_ && std::abs(point.x) <= zero_epsilon &&
-      std::abs(point.y) <= zero_epsilon && std::abs(point.z) <= zero_epsilon)
-    {
+    if (!ShouldProjectForNeighborSearch(point, pre_filter_max_z_)) {
+      // High points bypass the 2D index and classification, but remain in the output.
+      keep_points[i] = true;
       continue;
     }
     xy_cloud->push_back(pcl::PointXYZ{point.x, point.y, 0.0F});
@@ -196,8 +220,6 @@ void RadiusSearch2DOutlierFilterComponent::filter(
     z_values.push_back(point.z);
   }
 
-  pcl::PointCloud<pcl::PointXYZ> filtered_cloud;
-  filtered_cloud.reserve(xy_cloud->size());
   if (!xy_cloud->empty()) {
     // The classification only needs to know whether the threshold is reached. Bounding the
     // result count avoids enumerating every neighbor in dense regions without changing output.
@@ -213,7 +235,7 @@ void RadiusSearch2DOutlierFilterComponent::filter(
         (query_z < deletion_z_.min_z || query_z > deletion_z_.max_z))
       {
         // Protect points outside the ground-height band and avoid their neighbor search.
-        filtered_cloud.push_back(xyz_cloud->points[source_indices[i]]);
+        keep_points[source_indices[i]] = true;
         continue;
       }
 
@@ -223,8 +245,16 @@ void RadiusSearch2DOutlierFilterComponent::filter(
         HasVerticalZDistribution(
           i, count, neighbor_indices, z_values, vertical_rescue_))
       {
-        filtered_cloud.push_back(xyz_cloud->points[source_indices[i]]);
+        keep_points[source_indices[i]] = true;
       }
+    }
+  }
+
+  pcl::PointCloud<pcl::PointXYZ> filtered_cloud;
+  filtered_cloud.reserve(xyz_cloud->size());
+  for (std::size_t i = 0; i < xyz_cloud->size(); ++i) {
+    if (keep_points[i]) {
+      filtered_cloud.push_back(xyz_cloud->points[i]);
     }
   }
 

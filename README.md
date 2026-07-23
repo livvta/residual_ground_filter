@@ -1,11 +1,15 @@
 # Radius Search 2D Outlier Filter
 
-程序将输入转换为 `pcl::PointCloud<pcl::PointXYZ>`，把 Z 置零建立二维均匀网格。
-网格边长等于 `search_radius`；每次只检查当前格及周围 8 格，再执行精确圆形距离判断。
+此程序用于在地面分割算法之后，再次去除没有被正确分割的地面点。
 
-用于在地面分割算法之后，再次去除没有被正确分割的地面点。地面高度带外的点无条件
-保留；带内二维稀疏点只有在邻居不呈明显竖直分布时才会删除，从而保护墙边、立柱和
-空中钢管等结构。
+地面高度带外的点无条件保留；带内二维稀疏点只有在邻居不呈明显竖直分布时才会删除，从而保护墙边、立柱和空中钢管等结构。
+
+<table width="80%">
+<tr>
+  <td width="100%" align="center">
+    <img src="img/filter_1.webp" width="100%">
+</tr>
+</table>
 
 ## 处理逻辑
 
@@ -24,7 +28,8 @@
   ├─ 逐点预清理
   │  ├─ x/y/z 含 NaN 或 Inf → 删除
   │  ├─ remove_zero_points=true 且为 (0,0,0) → 删除
-  │  └─ 有效点 → 保留到待处理集合
+  │  ├─ z > pre_filter.max_z → 直接输出，不参与后续计算
+  │  └─ 其余有效点 → 进入后续处理
   │
   ├─ 将所有有效点投影到 XY 平面
   │  ├─ 投影点的 Z 统一设为 0
@@ -34,16 +39,12 @@
   │
   └─ 对每个有效点执行判断
      │
-     ├─ 查询点 Z 是否位于允许删除的高度带？
-     │  │
-     │  │  当前范围：[-2.50, -1.60] m
+     ├─ 查询点 Z 是否位于允许删除的高度带（deletion_z）？
      │  │
      │  ├─ 否 → 无条件保留
      │  │        └─ 不执行二维邻域搜索
      │  │
      │  └─ 是 → 执行二维半径搜索
-     │           │
-     │           │  设置search_radius参数
      │           │
      │           ├─ 邻居数 ≥ min_neighbors
      │           │  └─ 保留
@@ -73,6 +74,8 @@
      │                 │
      │                 └─ 任意条件不满足
      │                    └─ 判定为稀疏非竖直点 → 删除
+     │
+     ├─ 计算后保留点与高点旁路集合按输入顺序合并
      │
      ├─ 所有保留点转换为 XYZ PointCloud2
      │
@@ -136,7 +139,8 @@ ros2 run radius_search_2d_outlier_filter radius_search_2d_outlier_filter_node \
 |---|---:|---|
 | `search_radius` | `0.2` | XY 平面搜索半径（m） |
 | `min_neighbors` | `5` | 半径内最少点数，包含点自身 |
-| `remove_zero_points` | `true`（配置文件） | 删除 `(0,0,0)` 占位点 |
+| `remove_zero_points` | `true`  | 删除 `(0,0,0)` 占位点 |
+| `pre_filter.max_z` | `1.0` | `z` 高于此值的直接保留输出（m） |
 | `deletion_z.enabled` | `true` | 只允许删除指定 Z 高度带内的点 |
 | `deletion_z.min` | `-2.50` | 允许删除的最低 Z（m，包含边界） |
 | `deletion_z.max` | `-1.60` | 允许删除的最高 Z（m，包含边界） |
@@ -152,9 +156,6 @@ ros2 run radius_search_2d_outlier_filter radius_search_2d_outlier_filter_node \
 | `transform_timeout_sec` | `0.1` | TF 查询超时（s） |
 | `max_queue_size` | `5` | SensorData QoS 队列深度 |
 
-`search_radius`、`min_neighbors`、`remove_zero_points`、全部 `deletion_z.*` 和
-`vertical_rescue.*` 参数可通过 `ros2 param set` 或 rqt 动态修改。TF 与队列参数需要
-重启节点。
 
 `deletion_z` 判断发生在二维邻域搜索之前。高度带外的点直接复制到输出，不执行邻域
 搜索；高度边界使用过滤器处理坐标系，当前 `/patchworkpp/nonground` 为 `base_link`。

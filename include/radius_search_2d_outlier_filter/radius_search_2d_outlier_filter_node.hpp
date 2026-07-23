@@ -2,6 +2,7 @@
 #define RADIUS_SEARCH_2D_OUTLIER_FILTER__RADIUS_SEARCH_2D_OUTLIER_FILTER_NODE_HPP_
 
 #include "radius_search_2d_outlier_filter/filter.hpp"
+#include "radius_search_2d_outlier_filter/point_pre_filter.hpp"
 #include "radius_search_2d_outlier_filter/uniform_grid_2d.hpp"
 #include "radius_search_2d_outlier_filter/vertical_distribution.hpp"
 
@@ -39,6 +40,7 @@ private:
   int min_neighbors_;
   double search_radius_;
   bool remove_zero_points_;
+  double pre_filter_max_z_;
   DeletionZRange deletion_z_;
   VerticalRescueParameters vertical_rescue_;
   UniformGrid2D grid_;

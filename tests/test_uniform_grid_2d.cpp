@@ -1,3 +1,4 @@
+#include "radius_search_2d_outlier_filter/point_pre_filter.hpp"
 #include "radius_search_2d_outlier_filter/uniform_grid_2d.hpp"
 
 #include <algorithm>
@@ -78,6 +79,43 @@ TEST(UniformGrid2D, StopsAtRequestedNeighborThreshold)
       static_cast<double>(point.x) * point.x + static_cast<double>(point.y) * point.y,
       radius * radius);
   }
+}
+
+TEST(UniformGrid2D, HeightPreFilterExcludesCeilingPointsFromNeighborCount)
+{
+  constexpr double max_z = 1.0;
+  constexpr double radius = 0.5;
+  const std::vector<pcl::PointXYZ> source_points{
+    {0.0F, 0.0F, -2.0F},
+    {0.05F, 0.0F, 2.5F},
+    {-0.05F, 0.0F, 2.5F},
+    {0.0F, 0.05F, 2.5F},
+    {0.0F, -0.05F, 2.5F},
+  };
+
+  auto projected_cloud = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+  std::vector<pcl::PointXYZ> passthrough_points;
+  for (const auto & point : source_points) {
+    ASSERT_TRUE(IsValidInputPoint(point, false));
+    if (ShouldProjectForNeighborSearch(point, max_z)) {
+      projected_cloud->push_back(pcl::PointXYZ{point.x, point.y, 0.0F});
+    } else {
+      passthrough_points.push_back(point);
+    }
+  }
+
+  ASSERT_EQ(projected_cloud->size(), 1U);
+  ASSERT_EQ(passthrough_points.size(), 4U);
+  UniformGrid2D grid;
+  grid.Build(projected_cloud, radius);
+  std::vector<int> neighbors;
+  EXPECT_EQ(grid.RadiusSearch(0U, neighbors, 5U), 1);
+}
+
+TEST(UniformGrid2D, HeightPreFilterKeepsTheInclusiveUpperBoundary)
+{
+  EXPECT_TRUE(ShouldProjectForNeighborSearch(pcl::PointXYZ{1.0F, 2.0F, 1.0F}, 1.0));
+  EXPECT_FALSE(ShouldProjectForNeighborSearch(pcl::PointXYZ{1.0F, 2.0F, 1.01F}, 1.0));
 }
 
 TEST(UniformGrid2D, MatchesBruteForceForDeterministicRandomCloud)
