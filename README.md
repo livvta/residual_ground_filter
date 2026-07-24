@@ -60,8 +60,8 @@ ros2 launch residual_ground_filter residual_ground_filter.launch.py
 
 ```bash
 ros2 launch residual_ground_filter residual_ground_filter.launch.py \
-  input_topic:=/patchworkpp/nonground \
-  output_topic:=/patchworkpp/nonground_filtered
+  input_topic:=/multi_lidar_ground_segmentation/nonground \
+  output_topic:=/multi_lidar_ground_segmentation/nonground_filtered
 ```
 
 也可以直接运行节点：
@@ -70,8 +70,8 @@ ros2 launch residual_ground_filter residual_ground_filter.launch.py \
 ros2 run residual_ground_filter residual_ground_filter_node \
   --ros-args \
   --params-file /work/ros2_humble/lidar_fusion_ws/src/residual_ground_filter/config/residual_ground_filter.param.yaml \
-  -r input:=/patchworkpp/nonground \
-  -r output:=/patchworkpp/nonground_filtered
+  -r input:=/multi_lidar_ground_segmentation/nonground \
+  -r output:=/multi_lidar_ground_segmentation/nonground_filtered
 ```
 
 ## 参数

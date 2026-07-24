@@ -19,12 +19,12 @@ def generate_launch_description():
         [
             DeclareLaunchArgument(
                 "input_topic",
-                default_value="/patchworkpp/nonground",
+                default_value="/multi_lidar_ground_segmentation/nonground",
                 description="过滤前的非地面点云",
             ),
             DeclareLaunchArgument(
                 "output_topic",
-                default_value="/patchworkpp/nonground_filtered",
+                default_value="/multi_lidar_ground_segmentation/nonground_filtered",
                 description="过滤后的点云",
             ),
             DeclareLaunchArgument(
