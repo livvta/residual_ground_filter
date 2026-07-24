@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>radius_search_2d_outlier_filter</name>
+  <name>residual_ground_filter</name>
   <version>0.1.0</version>
-  <description>ROS 2 2D radius-search outlier filter adapted from Autoware.</description>
+  <description>ROS 2 filter for residual ground points left by upstream ground segmentation.</description>
   <maintainer email="example@example.com">ant</maintainer>
-  <license>Apache-2.0</license>
+  <license> </license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

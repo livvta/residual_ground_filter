@@ -1,5 +1,5 @@
-#ifndef RADIUS_SEARCH_2D_OUTLIER_FILTER__UNIFORM_GRID_2D_HPP_
-#define RADIUS_SEARCH_2D_OUTLIER_FILTER__UNIFORM_GRID_2D_HPP_
+#ifndef RESIDUAL_GROUND_FILTER__UNIFORM_GRID_2D_HPP_
+#define RESIDUAL_GROUND_FILTER__UNIFORM_GRID_2D_HPP_
 
 #include <cstddef>
 #include <vector>
@@ -7,7 +7,7 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
-namespace radius_search_2d_outlier_filter
+namespace residual_ground_filter
 {
 
 // A dense uniform XY grid. Each bucket occupies a contiguous range in point_indices_.
@@ -38,6 +38,6 @@ private:
   std::vector<int> point_indices_;
 };
 
-}  // namespace radius_search_2d_outlier_filter
+}  // namespace residual_ground_filter
 
-#endif  // RADIUS_SEARCH_2D_OUTLIER_FILTER__UNIFORM_GRID_2D_HPP_
+#endif  // RESIDUAL_GROUND_FILTER__UNIFORM_GRID_2D_HPP_

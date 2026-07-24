@@ -1,4 +1,4 @@
-#include "radius_search_2d_outlier_filter/filter.hpp"
+#include "residual_ground_filter/point_cloud_filter_base.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -9,10 +9,11 @@
 #include <tf2/exceptions.h>
 #include <tf2_sensor_msgs/tf2_sensor_msgs.hpp>
 
-namespace radius_search_2d_outlier_filter
+namespace residual_ground_filter
 {
 
-Filter::Filter(const std::string & node_name, const rclcpp::NodeOptions & options)
+PointCloudFilterBase::PointCloudFilterBase(
+  const std::string & node_name, const rclcpp::NodeOptions & options)
 : Node(node_name, options),
   input_frame_(declare_parameter<std::string>("input_frame", "")),
   output_frame_(declare_parameter<std::string>("output_frame", "")),
@@ -38,11 +39,12 @@ Filter::Filter(const std::string & node_name, const rclcpp::NodeOptions & option
   subscription_options.qos_overriding_options =
     rclcpp::QosOverridingOptions::with_default_policies();
   input_subscription_ = create_subscription<PointCloud2>(
-    "input", qos, std::bind(&Filter::pointCloudCallback, this, std::placeholders::_1),
+    "input", qos,
+    std::bind(&PointCloudFilterBase::pointCloudCallback, this, std::placeholders::_1),
     subscription_options);
 }
 
-bool Filter::validatePointCloud(const PointCloud2 & input)
+bool PointCloudFilterBase::validatePointCloud(const PointCloud2 & input)
 {
   if (input.point_step == 0U) {
     RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000, "Ignoring cloud with point_step=0");
@@ -68,7 +70,7 @@ bool Filter::validatePointCloud(const PointCloud2 & input)
   return true;
 }
 
-bool Filter::transformPointCloud(
+bool PointCloudFilterBase::transformPointCloud(
   const std::string & target_frame, const PointCloud2 & input, PointCloud2 & output)
 {
   if (target_frame.empty() || target_frame == input.header.frame_id) {
@@ -92,7 +94,7 @@ bool Filter::transformPointCloud(
   }
 }
 
-void Filter::pointCloudCallback(const PointCloud2::ConstSharedPtr input)
+void PointCloudFilterBase::pointCloudCallback(const PointCloud2::ConstSharedPtr input)
 {
   if (!validatePointCloud(*input)) {
     return;
@@ -126,4 +128,4 @@ void Filter::pointCloudCallback(const PointCloud2::ConstSharedPtr input)
   }
 }
 
-}  // namespace radius_search_2d_outlier_filter
+}  // namespace residual_ground_filter

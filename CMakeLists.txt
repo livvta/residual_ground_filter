@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(radius_search_2d_outlier_filter)
+project(residual_ground_filter)
 
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
@@ -15,26 +15,26 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_sensor_msgs REQUIRED)
 
-add_library(radius_search_2d_outlier_filter_component SHARED
-  src/filter.cpp
-  src/radius_search_2d_outlier_filter_node.cpp
+add_library(residual_ground_filter_component SHARED
+  src/point_cloud_filter_base.cpp
+  src/residual_ground_filter_node.cpp
   src/uniform_grid_2d.cpp
   src/vertical_distribution.cpp)
 
-target_compile_options(radius_search_2d_outlier_filter_component PRIVATE
+target_compile_options(residual_ground_filter_component PRIVATE
   -Wall -Wextra -Wpedantic)
 
-target_include_directories(radius_search_2d_outlier_filter_component
+target_include_directories(residual_ground_filter_component
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
   SYSTEM PRIVATE
     ${PCL_INCLUDE_DIRS})
 
-target_link_libraries(radius_search_2d_outlier_filter_component
+target_link_libraries(residual_ground_filter_component
   ${PCL_LIBRARIES})
 
-ament_target_dependencies(radius_search_2d_outlier_filter_component
+ament_target_dependencies(residual_ground_filter_component
   pcl_conversions
   rclcpp
   rclcpp_components
@@ -43,18 +43,19 @@ ament_target_dependencies(radius_search_2d_outlier_filter_component
   tf2_ros
   tf2_sensor_msgs)
 
-rclcpp_components_register_node(radius_search_2d_outlier_filter_component
-  PLUGIN "radius_search_2d_outlier_filter::RadiusSearch2DOutlierFilterComponent"
-  EXECUTABLE radius_search_2d_outlier_filter_node
+rclcpp_components_register_node(residual_ground_filter_component
+  PLUGIN "residual_ground_filter::ResidualGroundFilterComponent"
+  EXECUTABLE residual_ground_filter_node
   EXECUTOR SingleThreadedExecutor)
 
-install(TARGETS radius_search_2d_outlier_filter_component
+install(TARGETS residual_ground_filter_component
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
 install(DIRECTORY include/ DESTINATION include)
-install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY config launch DESTINATION share/${PROJECT_NAME}
+  PATTERN "__pycache__" EXCLUDE)
 install(FILES LICENSE README.md DESTINATION share/${PROJECT_NAME})
 
 ament_export_include_directories(include)

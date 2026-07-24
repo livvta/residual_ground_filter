@@ -1,10 +1,10 @@
-#ifndef RADIUS_SEARCH_2D_OUTLIER_FILTER__VERTICAL_DISTRIBUTION_HPP_
-#define RADIUS_SEARCH_2D_OUTLIER_FILTER__VERTICAL_DISTRIBUTION_HPP_
+#ifndef RESIDUAL_GROUND_FILTER__VERTICAL_DISTRIBUTION_HPP_
+#define RESIDUAL_GROUND_FILTER__VERTICAL_DISTRIBUTION_HPP_
 
 #include <cstddef>
 #include <vector>
 
-namespace radius_search_2d_outlier_filter
+namespace residual_ground_filter
 {
 
 struct VerticalRescueParameters
@@ -29,6 +29,6 @@ bool HasVerticalZDistribution(
   std::size_t query_index, int neighbor_count, const std::vector<int> & neighbor_indices,
   const std::vector<float> & z_values, const VerticalRescueParameters & parameters);
 
-}  // namespace radius_search_2d_outlier_filter
+}  // namespace residual_ground_filter
 
-#endif  // RADIUS_SEARCH_2D_OUTLIER_FILTER__VERTICAL_DISTRIBUTION_HPP_
+#endif  // RESIDUAL_GROUND_FILTER__VERTICAL_DISTRIBUTION_HPP_

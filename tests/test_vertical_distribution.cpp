@@ -1,11 +1,11 @@
-#include "radius_search_2d_outlier_filter/vertical_distribution.hpp"
+#include "residual_ground_filter/vertical_distribution.hpp"
 
 #include <stdexcept>
 #include <vector>
 
 #include <gtest/gtest.h>
 
-namespace radius_search_2d_outlier_filter
+namespace residual_ground_filter
 {
 namespace
 {
@@ -73,4 +73,4 @@ TEST(VerticalDistribution, SupportsFortyHeightBinsWithoutAllocation)
 }
 
 }  // namespace
-}  // namespace radius_search_2d_outlier_filter
+}  // namespace residual_ground_filter

@@ -1,12 +1,12 @@
-#ifndef RADIUS_SEARCH_2D_OUTLIER_FILTER__POINT_PRE_FILTER_HPP_
-#define RADIUS_SEARCH_2D_OUTLIER_FILTER__POINT_PRE_FILTER_HPP_
+#ifndef RESIDUAL_GROUND_FILTER__POINT_PRE_FILTER_HPP_
+#define RESIDUAL_GROUND_FILTER__POINT_PRE_FILTER_HPP_
 
 #include <cmath>
 #include <limits>
 
 #include <pcl/point_types.h>
 
-namespace radius_search_2d_outlier_filter
+namespace residual_ground_filter
 {
 
 inline constexpr double kUnlimitedPreFilterMaxZ = std::numeric_limits<double>::max();
@@ -30,6 +30,6 @@ inline bool ShouldProjectForNeighborSearch(const pcl::PointXYZ & point, const do
   return static_cast<double>(point.z) <= max_z;
 }
 
-}  // namespace radius_search_2d_outlier_filter
+}  // namespace residual_ground_filter
 
-#endif  // RADIUS_SEARCH_2D_OUTLIER_FILTER__POINT_PRE_FILTER_HPP_
+#endif  // RESIDUAL_GROUND_FILTER__POINT_PRE_FILTER_HPP_

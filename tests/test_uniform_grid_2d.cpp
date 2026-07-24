@@ -1,5 +1,5 @@
-#include "radius_search_2d_outlier_filter/point_pre_filter.hpp"
-#include "radius_search_2d_outlier_filter/uniform_grid_2d.hpp"
+#include "residual_ground_filter/point_pre_filter.hpp"
+#include "residual_ground_filter/uniform_grid_2d.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -10,7 +10,7 @@
 
 #include <gtest/gtest.h>
 
-namespace radius_search_2d_outlier_filter
+namespace residual_ground_filter
 {
 namespace
 {
@@ -142,4 +142,4 @@ TEST(UniformGrid2D, MatchesBruteForceForDeterministicRandomCloud)
 }
 
 }  // namespace
-}  // namespace radius_search_2d_outlier_filter
+}  // namespace residual_ground_filter

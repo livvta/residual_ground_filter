@@ -1,4 +1,4 @@
-#include "radius_search_2d_outlier_filter/radius_search_2d_outlier_filter_node.hpp"
+#include "residual_ground_filter/residual_ground_filter_node.hpp"
 
 #include <cmath>
 #include <limits>
@@ -9,7 +9,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <rclcpp_components/register_node_macro.hpp>
 
-namespace radius_search_2d_outlier_filter
+namespace residual_ground_filter
 {
 namespace
 {
@@ -21,9 +21,9 @@ std::string DescribePreFilterMaxZ(const double max_z)
 
 }  // namespace
 
-RadiusSearch2DOutlierFilterComponent::RadiusSearch2DOutlierFilterComponent(
+ResidualGroundFilterComponent::ResidualGroundFilterComponent(
   const rclcpp::NodeOptions & options)
-: Filter("radius_search_2d_outlier_filter", options),
+: PointCloudFilterBase("residual_ground_filter", options),
   min_neighbors_(declare_parameter<int>("min_neighbors", 5)),
   search_radius_(declare_parameter<double>("search_radius", 0.2)),
   remove_zero_points_(declare_parameter<bool>("remove_zero_points", false)),
@@ -69,12 +69,12 @@ RadiusSearch2DOutlierFilterComponent::RadiusSearch2DOutlierFilterComponent(
 
   parameter_callback_handle_ = add_on_set_parameters_callback(
     std::bind(
-      &RadiusSearch2DOutlierFilterComponent::onParameterChange, this,
+      &ResidualGroundFilterComponent::onParameterChange, this,
       std::placeholders::_1));
 
   RCLCPP_INFO(
     get_logger(),
-    "2D radius filter: radius=%.3f m min_neighbors=%d remove_zero_points=%s "
+    "Residual ground filter: radius=%.3f m min_neighbors=%d remove_zero_points=%s "
     "pre_filter.max_z=%s deletion_z=%s[%.2f, %.2f] vertical_rescue=%s",
     search_radius_, min_neighbors_, remove_zero_points_ ? "true" : "false",
     DescribePreFilterMaxZ(pre_filter_max_z_).c_str(),
@@ -83,7 +83,7 @@ RadiusSearch2DOutlierFilterComponent::RadiusSearch2DOutlierFilterComponent(
 }
 
 rcl_interfaces::msg::SetParametersResult
-RadiusSearch2DOutlierFilterComponent::onParameterChange(
+ResidualGroundFilterComponent::onParameterChange(
   const std::vector<rclcpp::Parameter> & parameters)
 {
   std::lock_guard<std::mutex> lock(mutex_);
@@ -189,7 +189,7 @@ RadiusSearch2DOutlierFilterComponent::onParameterChange(
   return rcl_interfaces::msg::SetParametersResult().set__successful(true);
 }
 
-void RadiusSearch2DOutlierFilterComponent::filter(
+void ResidualGroundFilterComponent::filter(
   const PointCloud2::ConstSharedPtr & input, PointCloud2 & output)
 {
   std::lock_guard<std::mutex> lock(mutex_);
@@ -265,7 +265,7 @@ void RadiusSearch2DOutlierFilterComponent::filter(
   output.header = input->header;
 }
 
-}  // namespace radius_search_2d_outlier_filter
+}  // namespace residual_ground_filter
 
 RCLCPP_COMPONENTS_REGISTER_NODE(
-  radius_search_2d_outlier_filter::RadiusSearch2DOutlierFilterComponent)
+  residual_ground_filter::ResidualGroundFilterComponent)

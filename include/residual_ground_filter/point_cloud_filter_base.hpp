@@ -1,5 +1,5 @@
-#ifndef RADIUS_SEARCH_2D_OUTLIER_FILTER__FILTER_HPP_
-#define RADIUS_SEARCH_2D_OUTLIER_FILTER__FILTER_HPP_
+#ifndef RESIDUAL_GROUND_FILTER__POINT_CLOUD_FILTER_BASE_HPP_
+#define RESIDUAL_GROUND_FILTER__POINT_CLOUD_FILTER_BASE_HPP_
 
 #include <memory>
 #include <string>
@@ -9,14 +9,15 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 
-namespace radius_search_2d_outlier_filter
+namespace residual_ground_filter
 {
 
-// Relevant standalone subset of Autoware's pointcloud_preprocessor Filter base.
-class Filter : public rclcpp::Node
+// ROS 2 base node for validated, optionally transformed PointCloud2 filtering.
+class PointCloudFilterBase : public rclcpp::Node
 {
 public:
-  explicit Filter(const std::string & node_name, const rclcpp::NodeOptions & options);
+  explicit PointCloudFilterBase(
+    const std::string & node_name, const rclcpp::NodeOptions & options);
 
 protected:
   using PointCloud2 = sensor_msgs::msg::PointCloud2;
@@ -40,6 +41,6 @@ private:
   tf2_ros::TransformListener tf_listener_;
 };
 
-}  // namespace radius_search_2d_outlier_filter
+}  // namespace residual_ground_filter
 
-#endif  // RADIUS_SEARCH_2D_OUTLIER_FILTER__FILTER_HPP_
+#endif  // RESIDUAL_GROUND_FILTER__POINT_CLOUD_FILTER_BASE_HPP_

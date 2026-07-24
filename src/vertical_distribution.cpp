@@ -1,4 +1,4 @@
-#include "radius_search_2d_outlier_filter/vertical_distribution.hpp"
+#include "residual_ground_filter/vertical_distribution.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -6,7 +6,7 @@
 #include <limits>
 #include <stdexcept>
 
-namespace radius_search_2d_outlier_filter
+namespace residual_ground_filter
 {
 namespace
 {
@@ -121,4 +121,4 @@ bool HasVerticalZDistribution(
          CountSetBits(occupied_bins) >= parameters.min_occupied_bins;
 }
 
-}  // namespace radius_search_2d_outlier_filter
+}  // namespace residual_ground_filter

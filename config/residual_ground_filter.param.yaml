@@ -1,12 +1,12 @@
 /**:
   ros__parameters:
 
-    search_radius: 0.5          # 二维 XY 平面内的搜索半径，单位为米。
+    search_radius: 0.25         # 二维 XY 平面内的搜索半径，单位为米
     min_neighbors: 22           # 半径内至少需要的点数（包含自身）
     remove_zero_points: true    # 忽略全零占位点
 
     pre_filter:
-      max_z: 3.55                # z 高于此值的点直接保留输出，但不参与 XY 邻域计算
+      max_z: 3.55               # z 高于此值的点直接保留输出，但不参与 XY 邻域计算
 
     input_frame: ""             # 留空表示在输入点云坐标系中处理
     output_frame: ""            # 留空表示在输入点云坐标系中处理

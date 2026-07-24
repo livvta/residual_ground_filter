@@ -1,11 +1,11 @@
-#include "radius_search_2d_outlier_filter/uniform_grid_2d.hpp"
+#include "residual_ground_filter/uniform_grid_2d.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
 
-namespace radius_search_2d_outlier_filter
+namespace residual_ground_filter
 {
 
 void UniformGrid2D::Build(
@@ -142,4 +142,4 @@ std::size_t UniformGrid2D::CellIndex(const float x, const float y) const
   return row * column_count_ + column;
 }
 
-}  // namespace radius_search_2d_outlier_filter
+}  // namespace residual_ground_filter
